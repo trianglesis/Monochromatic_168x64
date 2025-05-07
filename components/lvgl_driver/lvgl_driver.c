@@ -4,6 +4,9 @@ static const char *TAG = "lvgl";
 
 lv_disp_t *display;
 
+// To use LV_COLOR_FORMAT_I1, we need an extra buffer to hold the converted data
+static uint8_t oled_buffer[BUFFER_SIZE];
+
 /*
     Debug and reminder
 */
@@ -16,7 +19,6 @@ void lvgl_driver_info(void) {
     #elif CONFIG_CONNECTION_I2C
     ESP_LOGI(TAG, "Display connected via CONNECTION_I2C: %d", CONNECTION_I2C);
     #endif // CONNECTIONS SPI/I2C
-    ESP_LOGI(TAG, "BUFFER_SIZE: %d", BUFFER_SIZE);
     ESP_LOGI(TAG, "RENDER_MODE: %d", RENDER_MODE);
     ESP_LOGI(TAG, "Display rotation is set to %d degree! \n\t\t - Offsets X: %d Y: %d", ROTATE_DEGREE, Offset_X, Offset_Y);
 }
@@ -33,7 +35,7 @@ void lvgl_task_i2c(void * pvParameters)  {
     lv_obj_t *label = lv_label_create(lv_screen_active());
     lv_label_set_text(label, "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam euismod egestas augue at semper. Etiam ut erat vestibulum, volutpat lectus a, laoreet lorem.");
     
-    // lv_label_set_long_mode(label, LV_LABEL_LONG_SCROLL_CIRCULAR); /* Circular scroll */
+    lv_label_set_long_mode(label, LV_LABEL_LONG_SCROLL_CIRCULAR); /* Circular scroll */
     // lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);  // Works OK
     // lv_obj_set_width(label, DISP_HOR_RES); // Works OK
 
@@ -117,9 +119,6 @@ void flush_cb(lv_display_t* disp, const lv_area_t* area, uint8_t* px_map) {
     // More information about the monochrome, please refer to https://docs.lvgl.io/9.2/porting/display.html#monochrome-displays
     px_map += LVGL_PALETTE_SIZE;  // +8 bytes for monochrome
 
-    // To use LV_COLOR_FORMAT_I1, we need an extra buffer to hold the converted data
-    static uint8_t oled_buffer[BUFFER_SIZE];
-
     uint16_t hor_res = lv_display_get_physical_horizontal_resolution(disp);
     for (int y = y1; y <= y2; y++) {
         for (int x = x1; x <= x2; x++) {
@@ -145,7 +144,6 @@ void flush_cb(lv_display_t* disp, const lv_area_t* area, uint8_t* px_map) {
     // I2C mono
     esp_lcd_panel_handle_t pan_hand = lv_display_get_user_data(disp);
     esp_lcd_panel_draw_bitmap(pan_hand, x1, y1, x2 + 1, y2 + 1, oled_buffer);
-
 }
 
 /* Sometimes better to hard-set resolution */
@@ -201,24 +199,21 @@ esp_err_t lvgl_init(void) {
     lv_init(); // Init LVGL
 
     display = lv_display_create(DISP_HOR_RES, DISP_VER_RES);
+    lv_display_set_user_data(display, panel_handle);    // a custom pointer stored with lv_display_t object
 
-    size_t draw_buffer_sz = BUFFER_SIZE + LVGL_PALETTE_SIZE;  // +8 bytes for monochrome
-    void* buf1 = heap_caps_calloc(1, BUFFER_SIZE, MALLOC_CAP_INTERNAL |  MALLOC_CAP_8BIT);
-    void* buf2 = heap_caps_calloc(1, BUFFER_SIZE, MALLOC_CAP_INTERNAL |  MALLOC_CAP_8BIT);
+    size_t draw_buffer_sz = DISP_HOR_RES * DISP_VER_RES / 8 + LVGL_PALETTE_SIZE;  // +8 bytes for monochrome
+    void* buf1 = heap_caps_calloc(1, draw_buffer_sz, MALLOC_CAP_INTERNAL |  MALLOC_CAP_8BIT);
+    // void* buf2 = heap_caps_calloc(1, draw_buffer_sz, MALLOC_CAP_INTERNAL |  MALLOC_CAP_8BIT);
     assert(buf1);
-    assert(buf2);
-    /* Draw buffers */
-    ESP_LOGI(TAG, "Set buffer for monochromatic display, size: %u", draw_buffer_sz);
-    lv_display_set_buffers(display, buf1, buf2, draw_buffer_sz, RENDER_MODE);
-
+    // assert(buf2);
     /* Monochromatic */
     lv_display_set_color_format(display, LV_COLOR_FORMAT_I1);
+    // initialize LVGL draw buffers
+    lv_display_set_buffers(display, buf1, NULL, draw_buffer_sz, RENDER_MODE);
+    // lv_display_set_buffers(display, buf1, buf2, draw_buffer_sz, RENDER_MODE);
 
     /* set the callback which can copy the rendered image to an area of the display */
     lv_display_set_flush_cb(display, flush_cb);
-    lv_display_set_user_data(display, panel_handle);    // a custom pointer stored with lv_display_t object
-    lv_display_set_default(display);  // Set this display as default for UI use
-
     
     ESP_LOGI(TAG, "Register io panel event callback for LVGL flush ready notification");
     const esp_lcd_panel_io_callbacks_t cbs = {
@@ -230,8 +225,9 @@ esp_err_t lvgl_init(void) {
     /* Timer set in func */
     lvgl_tick_init(); // timer
 
-    // set_resolution();
+    set_resolution();
     set_orientation();
+    lv_display_set_default(display);  // Set this display as default for UI use
 
     // Now create a task
     ESP_LOGI(TAG, "Create LVGL task");
