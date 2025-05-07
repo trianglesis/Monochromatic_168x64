@@ -4,11 +4,10 @@ static const char *TAG = "lvgl";
 
 lv_disp_t *display;
 esp_timer_handle_t tick_timer = NULL;  // Move to global?
-
-// LVGL library is not thread-safe, this example will call LVGL APIs from different tasks, so use a mutex to protect it
 static _lock_t lvgl_api_lock;
 
-static void lvgl_driver_info(void) {
+
+void lvgl_driver_info(void) {
     printf(" - Init: lvgl_driver empty function call!\n\n");
     // esp_log_level_set("lcd_panel", ESP_LOG_VERBOSE);
     // esp_log_level_set(TAG, ESP_LOG_VERBOSE);
@@ -22,12 +21,12 @@ static void lvgl_driver_info(void) {
     ESP_LOGI(TAG, "Display rotation is set to %d degree! \n\t\t - Offsets X: %d Y: %d", ROTATE_DEGREE, Offset_X, Offset_Y);
 }
 
-static void lvgl_tick_increment(void *arg) {
+void lvgl_tick_increment(void *arg) {
     // Tell LVGL how many milliseconds have elapsed
     lv_tick_inc(LVGL_TICK_PERIOD_MS);
 }
 
-static void lvgl_tick_init(void) {
+void lvgl_tick_init(void) {
     // Tick interface for LVGL (using esp_timer to generate 5ms periodic event)
     ESP_LOGI(TAG, "Use esp_timer as LVGL tick timer");
     const esp_timer_create_args_t lvgl_tick_timer_args = {
@@ -39,7 +38,7 @@ static void lvgl_tick_init(void) {
     // Next create a task
 }
 
-static bool notify_flush_ready(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_io_event_data_t *edata, void *user_ctx) {
+bool notify_flush_ready(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_io_event_data_t *edata, void *user_ctx) {
     // this gets called when the DMA transfer of the buffer data has completed
     lv_display_t *disp_drv = (lv_display_t *)user_ctx;
     lv_display_flush_ready(disp_drv);
@@ -52,7 +51,7 @@ static bool notify_flush_ready(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel
     Must change Offset Y to X at flush_cb
     Offset_Y 34  // 34 IF ROTATED 270deg
 */
-static void flush_cb(lv_display_t* disp, const lv_area_t* area, uint8_t* px_map) {
+void flush_cb(lv_display_t* disp, const lv_area_t* area, uint8_t* px_map) {
     /* If Rotated And if this is SPI OLED from Waheshare
         https://forum.lvgl.io/t/gestures-are-slow-perceiving-only-detecting-one-of-5-10-tries/18515/86 
         If not - offset will be 0 which is ok
@@ -91,29 +90,19 @@ static void flush_cb(lv_display_t* disp, const lv_area_t* area, uint8_t* px_map)
         }
     }
     
-    if (panel_handle == NULL) {
-        // Choose panel if null, but since it's GLOBAL it should be fine:
-        // extern esp_lcd_panel_handle_t       panel_handle;
-        esp_lcd_panel_handle_t panel_handle = lv_display_get_user_data(disp);
-    }
     // I2C mono
     esp_lcd_panel_draw_bitmap(panel_handle, x1, y1, x2 + 1, y2 + 1, oled_buffer);
 }
 
-static void set_resolution(lv_display_t* disp) {
-    // Enforce if needed
-    ESP_LOGI(TAG, "Set resolution for panel and lvgl display: HOR: %d VERT: %d", DISP_HOR_RES, DISP_VER_RES);
-    lv_display_set_resolution(disp, DISP_HOR_RES, DISP_VER_RES);
-    lv_display_set_physical_resolution(disp, DISP_HOR_RES, DISP_VER_RES);
-}
 
 /*
 Simple for I2C display
 */
-static void lvgl_task_i2c(void * pvParameters)  {
+void lvgl_task_i2c(void * pvParameters)  {
     ESP_LOGI(TAG, "Starting LVGL task");
     uint32_t time_till_next_ms = 0;
-
+    
+    lv_lock();
     lv_obj_t *label = lv_label_create(lv_screen_active());
     lv_obj_set_width(label, DISP_HOR_RES); // Limit the max width by actual pixels
     // Long text to show display max width and height
@@ -121,32 +110,31 @@ static void lvgl_task_i2c(void * pvParameters)  {
     lv_label_set_text(label, "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam euismod egestas augue at semper. Etiam ut erat vestibulum, volutpat lectus a, laoreet lorem.");
     lv_obj_align(label, LV_ALIGN_TOP_MID, 0, 0);
     lv_obj_set_style_text_align(label, LV_ALIGN_TOP_MID, 0);
+    lv_unlock();
     // Show text 3 sec
     vTaskDelay(pdMS_TO_TICKS(3000));
     
     int counter = 0;
     // Handle LVGL tasks
     while (1) {
-        _lock_acquire(&lvgl_api_lock);
-
-        vTaskDelay(pdMS_TO_TICKS(10));
+        /* Normal operation (no sleep) in < 1 sec inactivity */
+        if(lv_display_get_inactive_time(NULL) < 1000) {
+            lv_timer_handler();
+        }
         time_till_next_ms = lv_timer_handler();
         // in case of triggering a task watch dog time out
         time_till_next_ms = MAX(time_till_next_ms, LVGL_TASK_MIN_DELAY_MS);
         // in case of lvgl display not ready yet
         time_till_next_ms = MIN(time_till_next_ms, LVGL_TASK_MAX_DELAY_MS);
-
-        char textlabel[20];
-        sprintf(textlabel, "Running: %u", counter);
-        // lv_label_set_text(label, textlabel);
+       
+        lv_lock();
         lv_label_set_text_fmt(label, "Running: %u", counter);
+        lv_unlock();
+
         ESP_LOGI(TAG, "Running: %u", counter);
         counter++;
-
-        _lock_release(&lvgl_api_lock);
-
+        
         vTaskDelay(pdMS_TO_TICKS(DISPLAY_UPDATE_FREQ));
-        usleep(1000 * time_till_next_ms);
     } // WHILE
 }
 
@@ -156,6 +144,7 @@ void graphics_i2c_draw(void) {
     xTaskCreatePinnedToCore(lvgl_task_i2c, "i2c display task", 8192, NULL, LVGL_TASK_PRIORITY, NULL, tskNO_AFFINITY);
 }
 
+
 esp_err_t lvgl_init(void) {
     lvgl_driver_info();  // Debug info print
     lv_init(); // Init LVGL
@@ -163,32 +152,9 @@ esp_err_t lvgl_init(void) {
     display = lv_display_create(DISP_HOR_RES, DISP_VER_RES);
     lv_display_set_user_data(display, panel_handle);    // a custom pointer stored with lv_display_t object
     lv_display_set_default(display);                    // Set this display as default for UI use
-    set_resolution(display);                            // Sometimes better to hard-set resolution
-
-    /* 
-        I2C config 
-        One buffer for mono OLED, render FULL
-    */
-    void* buf1 = NULL;
-    size_t draw_buffer_sz = BUFFER_SIZE + LVGL_PALETTE_SIZE;
-    ESP_LOGI(TAG, "Set buffer for monochromatic display, size: %u", draw_buffer_sz);
-    buf1 = heap_caps_calloc(1, BUFFER_SIZE, MALLOC_CAP_INTERNAL |  MALLOC_CAP_8BIT);
-    assert(buf1);
-    lv_display_set_color_format(display, LV_COLOR_FORMAT_I1);
-    lv_display_set_buffers(display, buf1, NULL, draw_buffer_sz, RENDER_MODE);
-    
-    // set the callback which can copy the rendered image to an area of the display
-    lv_display_set_flush_cb(display, flush_cb);
-    
-    ESP_LOGI(TAG, "Register io panel event callback for LVGL flush ready notification");
-    const esp_lcd_panel_io_callbacks_t cbs = {
-        .on_color_trans_done = notify_flush_ready,
-    };
-
-    /* Register done callback */
-    esp_lcd_panel_io_register_event_callbacks(io_handle, &cbs, display);
-    /* Timer set in func */
-    lvgl_tick_init(); // timer
+    /* Sometimes better to hard-set resolution */
+    lv_display_set_resolution(display, DISP_HOR_RES, DISP_VER_RES);
+    lv_display_set_physical_resolution(display, DISP_HOR_RES, DISP_VER_RES);
 
     /* Landscape orientation:
         270deg = USB on the left side - landscape orientation
@@ -207,6 +173,7 @@ esp_err_t lvgl_init(void) {
         esp_lcd_panel_swap_xy(panel_handle, true);
     See: https://forum.lvgl.io/t/gestures-are-slow-perceiving-only-detecting-one-of-5-10-tries/18515/60
     */
+
     if (ROTATE_DEGREE == 0) {
         lv_display_set_rotation(display, LV_DISPLAY_ROTATION_0);
     } else if (ROTATE_DEGREE == 90) {
@@ -229,5 +196,29 @@ esp_err_t lvgl_init(void) {
         // lv_display_set_rotation(display, LV_DISPLAY_ROTATION_0);
     }
 
+    /* 
+        I2C config 
+        One buffer for mono OLED, render FULL
+    */
+    void* buf1 = NULL;
+    size_t draw_buffer_sz = BUFFER_SIZE + LVGL_PALETTE_SIZE;
+    ESP_LOGI(TAG, "Set buffer for monochromatic display, size: %u", draw_buffer_sz);
+    buf1 = heap_caps_calloc(1, BUFFER_SIZE, MALLOC_CAP_INTERNAL |  MALLOC_CAP_8BIT);
+    assert(buf1);
+    /* Monochromatic */
+    lv_display_set_color_format(display, LV_COLOR_FORMAT_I1);
+    /* Draw buffers */
+    lv_display_set_buffers(display, buf1, NULL, draw_buffer_sz, RENDER_MODE);
+    /* set the callback which can copy the rendered image to an area of the display */
+    lv_display_set_flush_cb(display, flush_cb);
+    
+    ESP_LOGI(TAG, "Register io panel event callback for LVGL flush ready notification");
+    const esp_lcd_panel_io_callbacks_t cbs = {
+        .on_color_trans_done = notify_flush_ready,
+    };
+    /* Register done callback */
+    esp_lcd_panel_io_register_event_callbacks(io_handle, &cbs, display);
+    /* Timer set in func */
+    lvgl_tick_init(); // timer
     return ESP_OK;
 }
