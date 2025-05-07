@@ -4,7 +4,6 @@ static const char *TAG = "lvgl";
 
 lv_disp_t *display;
 esp_timer_handle_t tick_timer = NULL;  // Move to global?
-static _lock_t lvgl_api_lock;
 
 
 void lvgl_driver_info(void) {
@@ -100,48 +99,45 @@ Simple for I2C display
 */
 void lvgl_task_i2c(void * pvParameters)  {
     ESP_LOGI(TAG, "Starting LVGL task");
-    uint32_t time_till_next_ms = 0;
     
     lv_lock();
-    lv_obj_t *label = lv_label_create(lv_screen_active());
-    lv_obj_set_width(label, DISP_HOR_RES); // Limit the max width by actual pixels
-    // Long text to show display max width and height
-    lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
+
+    // Create a simple label
+    lv_obj_t *label = lv_label_create(lv_scr_act());
     lv_label_set_text(label, "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam euismod egestas augue at semper. Etiam ut erat vestibulum, volutpat lectus a, laoreet lorem.");
-    lv_obj_align(label, LV_ALIGN_TOP_MID, 0, 0);
-    lv_obj_set_style_text_align(label, LV_ALIGN_TOP_MID, 0);
+    lv_obj_align(label, LV_ALIGN_CENTER, 0, 0);
+
     lv_unlock();
+
     // Show text 3 sec
     vTaskDelay(pdMS_TO_TICKS(3000));
     
     int counter = 0;
+    long curtime = esp_timer_get_time()/1000;
+
     // Handle LVGL tasks
     while (1) {
-        /* Normal operation (no sleep) in < 1 sec inactivity */
-        if(lv_display_get_inactive_time(NULL) < 1000) {
-            lv_timer_handler();
-        }
-        time_till_next_ms = lv_timer_handler();
-        // in case of triggering a task watch dog time out
-        time_till_next_ms = MAX(time_till_next_ms, LVGL_TASK_MIN_DELAY_MS);
-        // in case of lvgl display not ready yet
-        time_till_next_ms = MIN(time_till_next_ms, LVGL_TASK_MAX_DELAY_MS);
-       
-        lv_lock();
-        lv_label_set_text_fmt(label, "Running: %u", counter);
-        lv_unlock();
-
-        ESP_LOGI(TAG, "Running: %u", counter);
-        counter++;
+        vTaskDelay(pdMS_TO_TICKS(10));  // idle between cycles
+        lv_task_handler();
         
-        vTaskDelay(pdMS_TO_TICKS(DISPLAY_UPDATE_FREQ));
+        if (esp_timer_get_time()/1000 - curtime > 1000) {
+            curtime = esp_timer_get_time()/1000;
+            
+            lv_lock();
+            lv_label_set_text_fmt(label, "Running: %u", counter);
+            lv_unlock();
+            
+            ESP_LOGI(TAG, "Running: %u", counter);
+            counter++;
+            
+            vTaskDelay(pdMS_TO_TICKS(DISPLAY_UPDATE_FREQ));
+        } // Timer
     } // WHILE
 }
 
 void graphics_i2c_draw(void) {
     ESP_LOGI(TAG, "Create LVGL task");
-    // Create a set of tasks to read sensors and update LCD, LED and other elements
-    xTaskCreatePinnedToCore(lvgl_task_i2c, "i2c display task", 8192, NULL, LVGL_TASK_PRIORITY, NULL, tskNO_AFFINITY);
+    xTaskCreatePinnedToCore(lvgl_task_i2c, "i2c display task", 8192, NULL, 9, NULL, tskNO_AFFINITY);
 }
 
 

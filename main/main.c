@@ -7,8 +7,15 @@ static const char *TAG = "mono-lvgl";
 
 void app_main(void)
 {
-    vTaskDelay(pdMS_TO_TICKS(500));
+    ESP_LOGI(TAG, "Start display test")
+    vTaskDelay(1000/portTICK_PERIOD_MS);
+
     ESP_ERROR_CHECK(display_init());
-    ESP_LOGI(TAG, "Init display");
-    vTaskDelay(pdMS_TO_TICKS(500));
+    TaskHandle_t taskHandle = NULL;
+
+    BaseType_t res = xTaskCreatePinnedToCore(lvgl_task_i2c, "LVGL task", 8192, NULL, 4, &taskHandle, 0); // stack, params, prio, handle, core
+    while(true) {
+        vTaskDelay(100/portTICK_PERIOD_MS);
+    }
+    
 }

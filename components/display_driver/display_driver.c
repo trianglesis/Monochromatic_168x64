@@ -74,7 +74,7 @@ esp_err_t display_init(void) {
     ESP_LOGI(TAG, "LVGL Display graphics initialization!");
     ESP_ERROR_CHECK(lvgl_init());  // Init LVGL for display and later use it
 
-    graphics_i2c_draw();
-
+    // graphics_i2c_draw();
     return ESP_OK;
+    
 }
