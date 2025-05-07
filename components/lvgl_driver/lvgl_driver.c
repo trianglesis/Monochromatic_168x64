@@ -35,11 +35,12 @@ void lvgl_task_i2c(void * pvParameters)  {
     
     // lv_label_set_long_mode(label, LV_LABEL_LONG_SCROLL_CIRCULAR); /* Circular scroll */
     // lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);  // Works OK
-    
-    lv_obj_set_width(label, DISP_HOR_RES); // Works OK
+    // lv_obj_set_width(label, DISP_HOR_RES); // Works OK
 
-    lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0); // Works OK
-    lv_obj_align(label, LV_ALIGN_TOP_LEFT, 0, 0);  // Works OK
+    // lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0); // Works OK
+    // lv_obj_align(label, LV_ALIGN_TOP_LEFT, 0, 0);  // Works OK
+    
+    lv_obj_align(label, LV_ALIGN_CENTER, 0, 0);
     lv_unlock();
 
     // Show text 3 sec
