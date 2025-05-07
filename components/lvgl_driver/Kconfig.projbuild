@@ -1,0 +1,18 @@
+menu "Example LVGL Graphics"
+
+    choice DISPLAY_ROTATION
+        prompt "Select display rotation degree 0 90 180 270"
+        default ROTATE_0
+        help
+            Select LCD panel graphics rotation
+        config ROTATE_0
+            bool "No rotation 0 deg"
+        config ROTATE_90
+            bool "Rotate display 90 deg"
+        config ROTATE_180
+            bool "Rotate display 180 deg"
+        config ROTATE_270
+            bool "Rotate display 270 deg"
+    endchoice
+
+endmenu

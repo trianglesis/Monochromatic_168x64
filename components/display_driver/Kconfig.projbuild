@@ -1,0 +1,31 @@
+menu "Example LCD Display"
+
+    config COMMON_SDA_PIN
+        int "SDA"
+        default 9 if IDF_TARGET_ESP32C6
+        default 9
+        help
+            SDA Pin - common for multiple sensors.
+    
+    config COMMON_SCL_PIN
+        int "SCL"
+        default 18 if IDF_TARGET_ESP32C6
+        default 18
+        help
+            SCL Pin - common for multiple sensors
+
+    config DISP_I2C_ADR
+        hex "LCD I2C Address"
+        default 0x3C if IDF_TARGET_ESP32C6
+        default 0x3C
+        help
+            Display i2c address
+
+    config I2C_FREQ_HZ
+        int "Master Frequency"
+        default 100000
+        help
+            I2C Speed of Master device. 100k usual.
+
+
+endmenu
