@@ -119,7 +119,7 @@ void lvgl_task_i2c(void * pvParameters)  {
     while (1) {
         vTaskDelay(pdMS_TO_TICKS(10));  // idle between cycles
         lv_task_handler();
-        
+
         if (esp_timer_get_time()/1000 - curtime > 1000) {
             curtime = esp_timer_get_time()/1000;
             
@@ -216,5 +216,9 @@ esp_err_t lvgl_init(void) {
     esp_lcd_panel_io_register_event_callbacks(io_handle, &cbs, display);
     /* Timer set in func */
     lvgl_tick_init(); // timer
+
+    // Now create a task
+    graphics_i2c_draw();
+
     return ESP_OK;
 }

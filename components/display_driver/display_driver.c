@@ -71,10 +71,10 @@ static esp_err_t display_i2c_init(void) {
 esp_err_t display_init(void) {
     display_driver_info();  // Debug info print
     display_i2c_init();  // Init as I2C
+
     ESP_LOGI(TAG, "LVGL Display graphics initialization!");
     ESP_ERROR_CHECK(lvgl_init());  // Init LVGL for display and later use it
 
-    // graphics_i2c_draw();
     return ESP_OK;
     
 }
