@@ -59,6 +59,4 @@
 extern lv_disp_t *display; 
 
 esp_err_t lvgl_init(void);
-void graphics_i2c_draw(void);
-void lvgl_task_i2c(void * pvParameters);
 // Do not use other functions out of this module.

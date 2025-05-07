@@ -37,7 +37,7 @@ void lvgl_task_i2c(void * pvParameters)  {
     
     lv_obj_set_width(label, DISP_HOR_RES); // Works OK
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0); // Works OK
-    lv_obj_align(label, LV_ALIGN_TOP_LEFT, 0, 0);  // Works OK
+    lv_obj_align(label, LV_ALIGN_CENTER, 0, 0);  // Works OK
     
     lv_unlock();
 
@@ -56,7 +56,6 @@ void lvgl_task_i2c(void * pvParameters)  {
         } // Timer
         
         lv_lock();
-        // It's now showing anything, previous text is still there.
         lv_label_set_text_fmt(label, "Running: %d", counter);
         lv_unlock();
         

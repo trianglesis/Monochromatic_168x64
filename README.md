@@ -22,7 +22,10 @@ Using latest i2c driver from IDF 5.4.1
 
 - Show long text
 - Show short label
+- Counting is working
+
+![counting](doc/pics/working_counter.jpg)
 
 # Not working
 
-- Short label is not updating
+- ...
