@@ -34,8 +34,8 @@ void lvgl_task_i2c(void * pvParameters)  {
     lv_label_set_text(label, "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam euismod egestas augue at semper. Etiam ut erat vestibulum, volutpat lectus a, laoreet lorem.");
     
     // lv_label_set_long_mode(label, LV_LABEL_LONG_SCROLL_CIRCULAR); /* Circular scroll */
-    
     // lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);  // Works OK
+    
     lv_obj_set_width(label, DISP_HOR_RES); // Works OK
 
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0); // Works OK
@@ -47,7 +47,6 @@ void lvgl_task_i2c(void * pvParameters)  {
     
     int counter = 0;
     long curtime = esp_timer_get_time()/1000;
-    ESP_LOGI(TAG, "INIT counter");
 
     // Handle LVGL tasks
     while (1) {
@@ -56,7 +55,6 @@ void lvgl_task_i2c(void * pvParameters)  {
         if (esp_timer_get_time()/1000 - curtime > 1000) {
             curtime = esp_timer_get_time()/1000;
         } // Timer
-        ESP_LOGI(TAG, "Start counter update: %d", counter);
         
         lv_lock();
         // It's now showing anything, previous text is still there.
