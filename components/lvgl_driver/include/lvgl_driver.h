@@ -30,7 +30,7 @@
 
 #define DISPLAY_UPDATE_FREQ     2500
 #define BUFFER_SIZE             (DISP_HOR_RES * DISP_VER_RES / 8)
-#define RENDER_MODE             LV_DISPLAY_RENDER_MODE_PARTIAL
+#define RENDER_MODE             LV_DISPLAY_RENDER_MODE_FULL
 
 // Use offset only for I2C
 #ifdef CONFIG_ROTATE_0

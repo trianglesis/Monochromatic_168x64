@@ -35,7 +35,7 @@ void lvgl_task_i2c(void * pvParameters)  {
     lv_obj_t *label = lv_label_create(lv_screen_active());
     lv_label_set_text(label, "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam euismod egestas augue at semper. Etiam ut erat vestibulum, volutpat lectus a, laoreet lorem.");
     
-    lv_label_set_long_mode(label, LV_LABEL_LONG_SCROLL_CIRCULAR); /* Circular scroll */
+    // lv_label_set_long_mode(label, LV_LABEL_LONG_SCROLL_CIRCULAR); /* Circular scroll */
     // lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);  // Works OK
     // lv_obj_set_width(label, DISP_HOR_RES); // Works OK
 
@@ -142,8 +142,8 @@ void flush_cb(lv_display_t* disp, const lv_area_t* area, uint8_t* px_map) {
     }
     
     // I2C mono
-    esp_lcd_panel_handle_t pan_hand = lv_display_get_user_data(disp);
-    esp_lcd_panel_draw_bitmap(pan_hand, x1, y1, x2 + 1, y2 + 1, oled_buffer);
+    // esp_lcd_panel_handle_t pan_hand = lv_display_get_user_data(disp);
+    esp_lcd_panel_draw_bitmap(panel_handle, x1, y1, x2 + 1, y2 + 1, oled_buffer);
 }
 
 /* Sometimes better to hard-set resolution */
