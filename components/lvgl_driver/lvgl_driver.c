@@ -203,14 +203,14 @@ esp_err_t lvgl_init(void) {
 
     size_t draw_buffer_sz = DISP_HOR_RES * DISP_VER_RES / 8 + LVGL_PALETTE_SIZE;  // +8 bytes for monochrome
     void* buf1 = heap_caps_calloc(1, draw_buffer_sz, MALLOC_CAP_INTERNAL |  MALLOC_CAP_8BIT);
-    // void* buf2 = heap_caps_calloc(1, draw_buffer_sz, MALLOC_CAP_INTERNAL |  MALLOC_CAP_8BIT);
+    void* buf2 = heap_caps_calloc(1, draw_buffer_sz, MALLOC_CAP_INTERNAL |  MALLOC_CAP_8BIT);
     assert(buf1);
-    // assert(buf2);
+    assert(buf2);
     /* Monochromatic */
     lv_display_set_color_format(display, LV_COLOR_FORMAT_I1);
     // initialize LVGL draw buffers
-    lv_display_set_buffers(display, buf1, NULL, draw_buffer_sz, RENDER_MODE);
-    // lv_display_set_buffers(display, buf1, buf2, draw_buffer_sz, RENDER_MODE);
+    // lv_display_set_buffers(display, buf1, NULL, draw_buffer_sz, RENDER_MODE);
+    lv_display_set_buffers(display, buf1, buf2, draw_buffer_sz, RENDER_MODE);
 
     /* set the callback which can copy the rendered image to an area of the display */
     lv_display_set_flush_cb(display, flush_cb);
