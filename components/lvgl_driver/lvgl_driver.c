@@ -30,10 +30,11 @@ void lvgl_task_i2c(void * pvParameters)  {
     
     lv_lock();
     // Create a simple label
-    lv_obj_t * label = lv_label_create(lv_screen_active());
+    lv_obj_t *label = lv_label_create(lv_screen_active());
     lv_label_set_text(label, "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam euismod egestas augue at semper. Etiam ut erat vestibulum, volutpat lectus a, laoreet lorem.");
-    
-    lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);  // Works OK
+    lv_label_set_long_mode(label, LV_LABEL_LONG_SCROLL_CIRCULAR); /* Circular scroll */
+
+    // lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);  // Works OK
     lv_obj_set_width(label, DISP_HOR_RES); // Works OK
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0); // Works OK
     lv_obj_align(label, LV_ALIGN_TOP_LEFT, 0, 0);  // Works OK
@@ -57,7 +58,6 @@ void lvgl_task_i2c(void * pvParameters)  {
         
         lv_lock();
         // It's now showing anything, previous text is still there.
-        lv_label_set_text(label, "");
         lv_label_set_text_fmt(label, "Running: %d", counter);
         lv_unlock();
         
@@ -142,8 +142,8 @@ void flush_cb(lv_display_t* disp, const lv_area_t* area, uint8_t* px_map) {
     }
     
     // I2C mono
-    esp_lcd_panel_draw_bitmap(panel_handle, x1, y1, x2 + 1, y2 + 1, oled_buffer);
-    // esp_lcd_panel_draw_bitmap((esp_lcd_panel_handle_t)lv_display_get_user_data(disp), x1, y1, x2 + 1, y2 + 1, px_map);
+    esp_lcd_panel_handle_t pan_hand = lv_display_get_user_data(disp);
+    esp_lcd_panel_draw_bitmap(pan_hand, x1, y1, x2 + 1, y2 + 1, oled_buffer);
 
 }
 
@@ -200,7 +200,6 @@ esp_err_t lvgl_init(void) {
     lv_init(); // Init LVGL
 
     display = lv_display_create(DISP_HOR_RES, DISP_VER_RES);
-    lv_display_set_default(display);                    // Set this display as default for UI use
 
     size_t draw_buffer_sz = BUFFER_SIZE + LVGL_PALETTE_SIZE;  // +8 bytes for monochrome
     void* buf1 = heap_caps_calloc(1, BUFFER_SIZE, MALLOC_CAP_INTERNAL |  MALLOC_CAP_8BIT);
@@ -217,6 +216,8 @@ esp_err_t lvgl_init(void) {
     /* set the callback which can copy the rendered image to an area of the display */
     lv_display_set_flush_cb(display, flush_cb);
     lv_display_set_user_data(display, panel_handle);    // a custom pointer stored with lv_display_t object
+    lv_display_set_default(display);  // Set this display as default for UI use
+
     
     ESP_LOGI(TAG, "Register io panel event callback for LVGL flush ready notification");
     const esp_lcd_panel_io_callbacks_t cbs = {
@@ -228,7 +229,7 @@ esp_err_t lvgl_init(void) {
     /* Timer set in func */
     lvgl_tick_init(); // timer
 
-    set_resolution();
+    // set_resolution();
     set_orientation();
 
     // Now create a task
